@@ -9,7 +9,7 @@ NOTION_PAGE_ID = os.environ["NOTION_PAGE_ID"]
 
 def get_news_briefing():
     today = datetime.now().strftime("%Y년 %m월 %d일")
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={GEMINI_API_KEY}"
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
 
     prompt = f"""오늘은 {today}입니다.
 당신은 "카피바라 특파원"이라는 귀엽고 친근한 캐릭터입니다. 🦫
