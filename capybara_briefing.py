@@ -1,23 +1,32 @@
 import os
 import requests
 from datetime import datetime
-import json
 
-# ── 설정 ──────────────────────────────────────────────
-GEMINI_API_KEY = os.environ["GEMINI_API_KEY"]
+OPENAI_API_KEY = os.environ["OPENAI_API_KEY"]
 NOTION_TOKEN = os.environ["NOTION_TOKEN"]
 NOTION_PAGE_ID = os.environ["NOTION_PAGE_ID"]
-# ─────────────────────────────────────────────────────
 
 
 def get_news_briefing():
-    """Gemini로 오늘의 경제/주식 뉴스 요약 받기"""
     today = datetime.now().strftime("%Y년 %m월 %d일")
+    url = "https://api.openai.com/v1/chat/completions"
 
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={GEMINI_API_KEY}"
+    headers = {
+        "Authorization": f"Bearer {OPENAI_API_KEY}",
+        "Content-Type": "application/json"
+    }
 
-    prompt = f"""오늘은 {today}입니다.
-당신은 "카피바라 특파원"이라는 귀엽고 친근한 캐릭터입니다. 🦫
+    payload = {
+        "model": "gpt-4o-mini",
+        "max_tokens": 1500,
+        "messages": [
+            {
+                "role": "system",
+                "content": '당신은 "카피바라 특파원"이라는 귀엽고 친근한 캐릭터입니다. 🦫 경제/주식 뉴스를 친근하고 재밌게 브리핑해주세요.'
+            },
+            {
+                "role": "user",
+                "content": f"""오늘은 {today}입니다.
 오늘의 한국 및 글로벌 경제/주식 주요 뉴스 4가지를 브리핑해주세요.
 
 각 뉴스는 아래 형식으로 작성해주세요:
@@ -27,16 +36,14 @@ def get_news_briefing():
 - 시장 방향: 상승 / 하락 / 중립 중 하나
 
 마지막에 오늘의 한 줄 총평도 카피바라 스타일로 추가해주세요."""
-
-    payload = {
-        "contents": [{"parts": [{"text": prompt}]}],
-        "generationConfig": {"temperature": 0.7, "maxOutputTokens": 1500}
+            }
+        ]
     }
 
-    res = requests.post(url, json=payload)
+    res = requests.post(url, headers=headers, json=payload)
     res.raise_for_status()
     data = res.json()
-    return data["candidates"][0]["content"]["parts"][0]["text"]
+    return data["choices"][0]["message"]["content"]
 
 
 def get_notion_headers():
@@ -48,16 +55,11 @@ def get_notion_headers():
 
 
 def add_briefing_to_notion(briefing_text):
-    """노션 페이지에 오늘의 브리핑 추가"""
     today = datetime.now().strftime("%Y년 %m월 %d일")
     now_str = datetime.now().strftime("%Y-%m-%d %H:%M")
-
-    # 브리핑 텍스트를 문단별로 나누기
     paragraphs = [p.strip() for p in briefing_text.strip().split("\n") if p.strip()]
 
     children = []
-
-    # 날짜 헤더
     children.append({
         "object": "block",
         "type": "heading_2",
@@ -65,8 +67,6 @@ def add_briefing_to_notion(briefing_text):
             "rich_text": [{"type": "text", "text": {"content": f"🦫 {today} 카피바라 특파원 브리핑"}}]
         }
     })
-
-    # 발행 시간
     children.append({
         "object": "block",
         "type": "paragraph",
@@ -74,16 +74,9 @@ def add_briefing_to_notion(briefing_text):
             "rich_text": [{"type": "text", "text": {"content": f"📅 발행: {now_str}"}, "annotations": {"color": "gray"}}]
         }
     })
-
-    # 구분선
     children.append({"object": "block", "type": "divider", "divider": {}})
 
-    # 브리핑 내용 (문단별로 추가)
     for para in paragraphs:
-        if not para:
-            continue
-        block_type = "paragraph"
-        # 제목처럼 보이는 줄은 callout으로
         if para.startswith("**") or para.startswith("##"):
             para = para.replace("**", "").replace("##", "").strip()
             children.append({
@@ -103,14 +96,10 @@ def add_briefing_to_notion(briefing_text):
                 }
             })
 
-    # 마무리 구분선
     children.append({"object": "block", "type": "divider", "divider": {}})
 
-    # 노션 API 호출 (블록 추가)
     url = f"https://api.notion.com/v1/blocks/{NOTION_PAGE_ID}/children"
-    payload = {"children": children}
-
-    res = requests.patch(url, headers=get_notion_headers(), json=payload)
+    res = requests.patch(url, headers=get_notion_headers(), json={"children": children})
     res.raise_for_status()
     print(f"✅ 노션 업데이트 완료! ({now_str})")
 
