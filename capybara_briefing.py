@@ -2,31 +2,17 @@ import os
 import requests
 from datetime import datetime
 
-OPENAI_API_KEY = os.environ["OPENAI_API_KEY"]
+GEMINI_API_KEY = os.environ["GEMINI_API_KEY"]
 NOTION_TOKEN = os.environ["NOTION_TOKEN"]
 NOTION_PAGE_ID = os.environ["NOTION_PAGE_ID"]
 
 
 def get_news_briefing():
     today = datetime.now().strftime("%Y년 %m월 %d일")
-    url = "https://api.openai.com/v1/chat/completions"
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={GEMINI_API_KEY}"
 
-    headers = {
-        "Authorization": f"Bearer {OPENAI_API_KEY}",
-        "Content-Type": "application/json"
-    }
-
-    payload = {
-        "model": "gpt-4o-mini",
-        "max_tokens": 1500,
-        "messages": [
-            {
-                "role": "system",
-                "content": '당신은 "카피바라 특파원"이라는 귀엽고 친근한 캐릭터입니다. 🦫 경제/주식 뉴스를 친근하고 재밌게 브리핑해주세요.'
-            },
-            {
-                "role": "user",
-                "content": f"""오늘은 {today}입니다.
+    prompt = f"""오늘은 {today}입니다.
+당신은 "카피바라 특파원"이라는 귀엽고 친근한 캐릭터입니다. 🦫
 오늘의 한국 및 글로벌 경제/주식 주요 뉴스 4가지를 브리핑해주세요.
 
 각 뉴스는 아래 형식으로 작성해주세요:
@@ -36,14 +22,15 @@ def get_news_briefing():
 - 시장 방향: 상승 / 하락 / 중립 중 하나
 
 마지막에 오늘의 한 줄 총평도 카피바라 스타일로 추가해주세요."""
-            }
-        ]
-    }
 
-    res = requests.post(url, headers=headers, json=payload)
+    payload = {
+        "contents": [{"parts": [{"text": prompt}]}],
+        "generationConfig": {"temperature": 0.7, "maxOutputTokens": 1500}
+    }
+    res = requests.post(url, json=payload)
     res.raise_for_status()
     data = res.json()
-    return data["choices"][0]["message"]["content"]
+    return data["candidates"][0]["content"]["parts"][0]["text"]
 
 
 def get_notion_headers():
