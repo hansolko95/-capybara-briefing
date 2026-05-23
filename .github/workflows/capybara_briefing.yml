@@ -23,7 +23,7 @@ jobs:
 
       - name: 카피바라 특파원 브리핑 실행
         env:
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
           NOTION_PAGE_ID: ${{ secrets.NOTION_PAGE_ID }}
         run: |
