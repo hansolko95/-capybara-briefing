@@ -28,7 +28,10 @@ def get_news_briefing():
         "generationConfig": {"temperature": 0.7, "maxOutputTokens": 1500}
     }
     res = requests.post(url, json=payload)
-    res.raise_for_status()
+    if not res.ok:
+        print(f"API 에러: {res.status_code}")
+        print(f"응답 내용: {res.text}")
+        res.raise_for_status()
     data = res.json()
     return data["candidates"][0]["content"]["parts"][0]["text"]
 
