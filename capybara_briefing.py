@@ -2,16 +2,18 @@ import os
 import requests
 from datetime import datetime
 
-GEMINI_API_KEY = os.environ["GEMINI_API_KEY"]
+HUGGINGFACE_TOKEN = os.environ["HUGGINGFACETOKEN"]
 NOTION_TOKEN = os.environ["NOTION_TOKEN"]
 NOTION_PAGE_ID = os.environ["NOTION_PAGE_ID"]
 
 
 def get_news_briefing():
     today = datetime.now().strftime("%Y년 %m월 %d일")
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key={GEMINI_API_KEY}"
-
-    prompt = f"""오늘은 {today}입니다.
+    
+    url = "https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.3"
+    headers = {"Authorization": f"Bearer {HUGGINGFACE_TOKEN}"}
+    
+    prompt = f"""<s>[INST] 오늘은 {today}입니다.
 당신은 "카피바라 특파원"이라는 귀엽고 친근한 캐릭터입니다. 🦫
 오늘의 한국 및 글로벌 경제/주식 주요 뉴스 4가지를 브리핑해주세요.
 
@@ -21,19 +23,24 @@ def get_news_briefing():
 - 2~3문장 요약 (카피바라 특파원답게 친근하고 재밌게!)
 - 시장 방향: 상승 / 하락 / 중립 중 하나
 
-마지막에 오늘의 한 줄 총평도 카피바라 스타일로 추가해주세요."""
+마지막에 오늘의 한 줄 총평도 카피바라 스타일로 추가해주세요. [/INST]"""
 
     payload = {
-        "contents": [{"parts": [{"text": prompt}]}],
-        "generationConfig": {"temperature": 0.7, "maxOutputTokens": 1500}
+        "inputs": prompt,
+        "parameters": {
+            "max_new_tokens": 1500,
+            "temperature": 0.7,
+            "return_full_text": False
+        }
     }
-    res = requests.post(url, json=payload)
+    
+    res = requests.post(url, headers=headers, json=payload)
     if not res.ok:
         print(f"API 에러: {res.status_code}")
         print(f"응답 내용: {res.text}")
         res.raise_for_status()
     data = res.json()
-    return data["candidates"][0]["content"]["parts"][0]["text"]
+    return data[0]["generated_text"]
 
 
 def get_notion_headers():
